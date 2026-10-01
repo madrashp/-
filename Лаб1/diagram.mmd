@@ -1,0 +1,33 @@
+erDiagram
+    USER {
+        string id PK
+        string email
+        string full_name
+        timestamp created_at
+    }
+
+    BOOK {
+        string id PK
+        string title
+        string isbn
+        int published_year
+    }
+
+    AUTHOR {
+        string id PK
+        string name
+        string bio
+    }
+
+    LOAN {
+        string id PK
+        string user_id FK
+        string book_id FK
+        timestamp borrowed_at
+        timestamp due_date
+        timestamp returned_at
+    }
+
+    USER ||--o{ LOAN : "places"
+    BOOK ||--o{ LOAN : "included_in"
+    AUTHOR }|--|{ BOOK : "writes"
