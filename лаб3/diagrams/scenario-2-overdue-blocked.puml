@@ -30,13 +30,11 @@ deactivate DB
 LoanRepo --> Service : true (has overdue loans)
 deactivate LoanRepo
 
-' ----- Альтернативна гілка блокування -----
-alt #LightPink [ADR 0002 Triggered: hasOverdueLoans == true]
+' ----- Використовуємо opt замість alt/else з порожньою гілкою -----
+opt #LightPink [ADR 0002 Triggered: hasOverdueLoans == true]
     Service --> API : throw OverdueLoanException("User has active overdue loans")
     API --> UI : HTTP 403 Forbidden\n{ "error": "LOAN_BLOCKED_OVERDUE", "message": "Поверніть прострочені книги" }
     UI --> User : Повідомлення: "Бронювання заблоковано! Спершу поверніть прострочені книги."
-else #LightGreen [No Overdue Loans]
-    note right of Service: Сценарій 1 (Успішна видача)
 end
 
 deactivate Service
