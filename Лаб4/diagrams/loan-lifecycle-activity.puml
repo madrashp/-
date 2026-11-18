@@ -1,0 +1,83 @@
+@startuml
+title E-Library System — Бізнес-процес видачі та повернення книги (Activity Diagram)
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam conditionStyle diamond
+skinparam activityFontSize 12
+skinparam swimlaneWidth same
+
+|User|
+start
+:Натискає "Забронювати книгу" (bookId);
+
+|E-Library System|
+:Отримує POST /api/v1/loans;
+:Перевіряє наявність боргів\n(SELECT COUNT WHERE returned_at IS NULL AND due_date < NOW());
+
+if (Є прострочені Loan?\n[ADR 0002]) then (так)
+  :Формує помилку HTTP 403 Forbidden;
+  :Надсилає повідомлення про блокування >
+  |User|
+  :Отримує сповіщення:\n"Бронювання заблоковано через борги" <
+  stop
+else (ні)
+  |E-Library System|
+  :Перевіряє доступність книги (Book.is_available);
+  if (Книга доступна?) then (ні)
+    :Формує помилку HTTP 409 Conflict;
+    :Надсилає повідомлення про відсутність >
+    |User|
+    :Отримує сповіщення:\n"Книга тимчасово недоступна" <
+    stop
+  else (так)
+    |E-Library System|
+    :Створює запис Loan (status = PENDING,\nborrowed_at = NOW(), due_date = +14 днів);
+    
+    ' ----- Паралельні гілки (fork / join) -----
+    fork
+      :Оновлює статус книги\n(Book.is_available = false);
+    fork again
+      :Надсилає підтвердження бронювання (HTTP 201) >
+      |User|
+      :Отримує підтвердження та забирає книгу <
+    end fork
+  endif
+endif
+
+' ----- Етап користування та повернення -----
+|E-Library System|
+:Очікує повернення книги до due_date;
+
+if (Термін due_date минув,\nа returned_at IS NULL?) then (так (прострочено))
+  :Делегує задачу нагадування (UC-10) >
+  |Notification Service <<System>>|
+  :Отримує тригер про прострочення <
+  :Надсилає email-нагадування про борг >
+  |User|
+  :Отримує лист-нагадування про борг <
+  note right
+    Процес не блокується без відповіді:
+    Loan лишається простроченим (блокує
+    нові видачі) до фізичного повернення.
+  end note
+else (ні (вчасно))
+endif
+
+|User|
+:Приносить книгу до бібліотеки;
+
+|Librarian|
+:Фізично приймає книгу;
+:Підтверджує повернення в системі (UC-09);
+
+|E-Library System|
+:Оновлює запис Loan (returned_at = NOW());
+:Звільняє книгу (Book.is_available = true);
+:Надсилає чек/повідомлення про закриття видачі >
+
+|User|
+:Отримує підтвердження закриття Loan <
+stop
+
+@enduml
