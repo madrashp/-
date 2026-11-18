@@ -5,57 +5,56 @@ skinparam backgroundColor #FFFFFF
 skinparam shadowing false
 skinparam conditionStyle diamond
 skinparam activityFontSize 12
-skinparam swimlaneWidth same
 
 |User|
 start
-:Натискає "Забронювати книгу" (bookId);
+:Натискає "Забронювати книгу"\n(bookId);
 
 |E-Library System|
-:Отримує POST запит на бронювання;
-:Перевіряє наявність боргів\n(returned_at IS NULL AND due_date < NOW());
+:Отримує POST /api/v1/loans;
+:Перевіряє наявність боргів\n(returned_at IS NULL AND\ndue_date < NOW());
 
 if (Є прострочені Loan?\n[ADR 0002]) then (так)
-  :Формує помилку HTTP 403 Forbidden;
-  :Надсилає повідомлення про блокування>;
+  :Формує помилку\nHTTP 403 Forbidden;
+  :Надсилає повідомлення про блокування; <<output>>
   |User|
-  :Отримує сповіщення:\n"Бронювання заблоковано через борги"<;
+  :Отримує сповіщення про блокування; <<input>>
   stop
 else (ні)
   |E-Library System|
-  :Перевіряє доступність книги (Book.is_available);
+  :Перевіряє доступність книги\n(Book.is_available);
   if (Книга доступна?) then (ні)
-    :Формує помилку HTTP 409 Conflict;
-    :Надсилає повідомлення про відсутність>;
+    :Формує помилку\nHTTP 409 Conflict;
+    :Надсилає повідомлення про відсутність; <<output>>
     |User|
-    :Отримує сповіщення:\n"Книга тимчасово недоступна"<;
+    :Отримує сповіщення: книга недоступна; <<input>>
     stop
   else (так)
     |E-Library System|
-    :Створює запис Loan (status = PENDING,\nborrowed_at = NOW(), due_date = +14 днів);
+    :Створює запис Loan\n(status = PENDING,\ndue_date = +14 днів);
     
-    ' ----- Паралельні гілки (fork / join) -----
     fork
       :Оновлює статус книги\n(Book.is_available = false);
     fork again
-      :Надсилає підтвердження бронювання (HTTP 201)>;
-      |User|
-      :Отримує підтвердження та забирає книгу<;
+      :Формує квитанцію\nбронювання (HTTP 201);
     end fork
+    
+    :Надсилає підтвердження бронювання; <<output>>
+    |User|
+    :Отримує підтвердження та забирає книгу; <<input>>
   endif
 endif
 
-' ----- Етап користування та повернення -----
 |E-Library System|
-:Очікує повернення книги до due_date;
+:Очікує повернення книги\nдо настання due_date;
 
 if (Термін due_date минув,\nа returned_at IS NULL?) then (так (прострочено))
-  :Делегує задачу нагадування (UC-10)>;
+  :Делегує нагадування (UC-10); <<output>>
   |Notification Service <<System>>|
-  :Отримує тригер про прострочення<;
-  :Надсилає email-нагадування про борг>;
+  :Отримує тригер про борг; <<input>>
+  :Надсилає email-нагадування читачеві; <<output>>
   |User|
-  :Отримує лист-нагадування про борг<;
+  :Отримує лист-нагадування про борг; <<input>>
   note right
     Процес не блокується без відповіді:
     Loan лишається простроченим (блокує
@@ -69,15 +68,15 @@ endif
 
 |Librarian|
 :Фізично приймає книгу;
-:Підтверджує повернення в системі (UC-09);
+:Підтверджує повернення\nв системі (UC-09);
 
 |E-Library System|
-:Оновлює запис Loan (returned_at = NOW());
-:Звільняє книгу (Book.is_available = true);
-:Надсилає чек та повідомлення про закриття видачі>;
+:Оновлює запис Loan\n(returned_at = NOW());
+:Звільняє книгу\n(Book.is_available = true);
+:Надсилає повідомлення про закриття видачі; <<output>>
 
 |User|
-:Отримує підтвердження закриття Loan<;
+:Отримує підтвердження закриття Loan; <<input>>
 stop
 
 @enduml
