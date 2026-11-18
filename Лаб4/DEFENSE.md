@@ -18,5 +18,5 @@
 3) **З Завданням 3 (Sequence Diagrams):** Повідомлення про створення `Loan` (`HTTP 201`), блокування боржника (`HTTP 403`) та перевірка `SELECT COUNT(*) ... WHERE returned_at IS NULL AND due_date < NOW()` повністю збігаються з викликами на Sequence-діаграмах Сценарію 1 та Сценарію 2.
 
 ### Здача:
-(а) Посилання на GitHub: `https://github.com/madrashp/-/edit/main/%D0%9B%D0%B0%D0%B14`  
-(б) Цей заповнений DEFENSE.md.
+Посилання на GitHub: `https://github.com/madrashp/-/edit/main/%D0%9B%D0%B0%D0%B14`  
+
